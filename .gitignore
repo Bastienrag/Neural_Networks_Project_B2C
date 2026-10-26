@@ -1,0 +1,16 @@
+# Images WikiArt : licence inconnue, à ne jamais publier.
+# Seuls metadata.csv et subset_info.json peuvent être versionnés.
+code/data/wikiart_*/*/
+
+# Supports de cours et consignes : non publiés
+cours/
+Consignes/
+
+# Environnement Python
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store

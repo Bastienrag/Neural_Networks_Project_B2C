@@ -1,0 +1,14 @@
+# Extraction des données
+datasets>=3.0
+pillow
+
+# Modèles et évaluation
+torch
+torchvision
+scikit-learn
+
+# Notebook
+jupyterlab
+matplotlib
+numpy
+pandas

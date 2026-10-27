@@ -14,8 +14,9 @@ construit les briques neuronales :
 - **recommander** à la direction un réseau de neurones ou un modèle
   classique, sachant que les bornes tournent sur des CPU modestes.
 
-Tout le travail est dans le notebook
-[`code/guide_musee.ipynb`](code/guide_musee.ipynb).
+Le travail est réparti en six notebooks, un par jalon du cours, à
+exécuter dans l'ordre. Ils partagent le chargement des données et le
+découpage train / validation / test via le module `code/commun.py`.
 
 Membres de l'équipe : Bastien Ragueneau, Colin Pietri, Cristian Larrain.
 
@@ -24,7 +25,13 @@ Membres de l'équipe : Bastien Ragueneau, Colin Pietri, Cristian Larrain.
 ```
 .
 ├── code/
-│   ├── guide_musee.ipynb            # notebook de rendu
+│   ├── commun.py                    # chargement, découpage, normalisation
+│   ├── 01_donnees.ipynb             # contexte, exploration, découpage
+│   ├── 02_baseline.ipynb            # régression logistique et réseau dense (m1)
+│   ├── 03_diagnostic.ipynb          # suivi de l'entraînement et diagnostic (m2)
+│   ├── 04_resnet.ipynb              # ResNet pré-entraîné (m3)
+│   ├── 05_questions.ipynb           # recherche question → œuvre (m4)
+│   ├── 06_recommandation.ipynb      # évaluation finale et recommandation
 │   └── data/
 │       ├── make_wikiart_subset.py   # extraction du sous-ensemble WikiArt
 │       └── wikiart_style5/          # metadata.csv et subset_info.json (images non versionnées)
@@ -58,23 +65,25 @@ Membres de l'équipe : Bastien Ragueneau, Colin Pietri, Cristian Larrain.
    deux heures. Après une coupure, relancer la même commande reprend là où
    elle s'était arrêtée.
 
-3. Ouvrir le notebook et l'exécuter de haut en bas :
+3. Ouvrir les notebooks et les exécuter dans l'ordre, de `01_donnees` à
+   `06_recommandation`, chacun de haut en bas :
 
    ```bash
-   jupyter lab code/guide_musee.ipynb
+   jupyter lab code/
    ```
 
 ## Avancement
 
 Chaque jalon du cours est marqué par un tag git.
 
-| Jalon | Contenu | État |
-|---|---|---|
-| Séance 1 | Dépôt, choix de 5 styles, extraction du sous-ensemble WikiArt | fait |
-| `m1` | Réseau dense de référence, entraîné avec une boucle propre | à faire |
-| `m2` | Courbes de suivi train / validation et diagnostic des échecs | à faire |
-| `m3` | ResNet pré-entraîné, comparé au réseau dense | à faire |
-| `m4` | Recherche par question et comparaison neuronal / classique | à faire |
+| Jalon | Contenu | Notebook | État |
+|---|---|---|---|
+| Séance 1 | Dépôt, choix de 5 styles, extraction du sous-ensemble WikiArt | `01_donnees` | fait |
+| `m1` | Régression logistique et réseau dense de référence | `02_baseline` | à faire |
+| `m2` | Courbes de suivi train / validation et diagnostic des échecs | `03_diagnostic` | à faire |
+| `m3` | ResNet pré-entraîné, comparé au réseau dense | `04_resnet` | à faire |
+| `m4` | Recherche par question et comparaison neuronal / classique | `05_questions` | à faire |
+| Rendu | Évaluation finale sur le test et recommandation | `06_recommandation` | à faire |
 
 ## Contribuer
 

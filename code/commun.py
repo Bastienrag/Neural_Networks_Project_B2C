@@ -1,4 +1,5 @@
-"""Briques partagées par les notebooks : chargement des œuvres, découpage, normalisation."""
+"""Briques partagées par les notebooks : chargement des œuvres, découpage, normalisation,
+réseau dense et boucle d'entraînement."""
 
 import json
 import random
@@ -9,6 +10,8 @@ import pandas as pd
 import torch
 from PIL import Image
 from sklearn.model_selection import StratifiedGroupKFold
+from torch import nn
+from torch.utils.data import DataLoader, Dataset
 
 SEED = 0
 DATA_DIR = Path(__file__).resolve().parent / "data" / "wikiart_style5"
@@ -93,3 +96,90 @@ def normalization_stats(X: torch.Tensor, train_idx: np.ndarray) -> tuple[torch.T
 def standardize(X: torch.Tensor, mean: torch.Tensor, std: torch.Tensor) -> torch.Tensor:
     """Pixels uint8 (N, C, H, W) ramenés dans [0, 1], puis centrés-réduits canal par canal."""
     return (X.float() / 255 - mean[:, None, None]) / std[:, None, None]
+
+
+class ArtworkDataset(Dataset):
+    """Œuvres d'un split : image standardisée (C, H, W) et indice de style."""
+
+    def __init__(self, X: torch.Tensor, y: torch.Tensor, idx: np.ndarray,
+                 mean: torch.Tensor, std: torch.Tensor):
+        self.X = standardize(X[idx], mean, std)
+        self.y = y[idx]
+
+    def __len__(self) -> int:
+        return len(self.y)
+
+    def __getitem__(self, i: int) -> tuple[torch.Tensor, torch.Tensor]:
+        return self.X[i], self.y[i]
+
+
+class DenseNet(nn.Module):
+    """Réseau feed-forward sur les pixels aplatis : une couche Linear + activation par couche
+    cachée, puis une couche Linear de sortie qui renvoie les logits."""
+
+    def __init__(self, n_in: int, hidden: list[int], n_out: int,
+                 activation: type[nn.Module] = nn.Sigmoid):
+        super().__init__()
+        layers, width = [nn.Flatten()], n_in
+        for h in hidden:
+            layers += [nn.Linear(width, h), activation()]
+            width = h
+        layers.append(nn.Linear(width, n_out))
+        self.net = nn.Sequential(*layers)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.net(x)
+
+
+def train_one_epoch(model: nn.Module, loader: DataLoader, loss_fn: nn.Module,
+                    optimizer: torch.optim.Optimizer, device: torch.device) -> tuple[float, float]:
+    """Une passe sur le train : forward, perte, zero_grad, backward, step.
+    Renvoie la perte et l'accuracy moyennes de l'époque."""
+    model.train()
+    total_loss, correct, n = 0.0, 0, 0
+    for xb, yb in loader:
+        xb, yb = xb.to(device), yb.to(device)
+        logits = model(xb)
+        loss = loss_fn(logits, yb)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item() * len(yb)
+        correct += (logits.argmax(1) == yb).sum().item()
+        n += len(yb)
+    return total_loss / n, correct / n
+
+
+@torch.no_grad()
+def evaluate(model: nn.Module, loader: DataLoader, loss_fn: nn.Module,
+             device: torch.device) -> tuple[float, float]:
+    """Perte et accuracy moyennes, en mode évaluation et sans gradient."""
+    model.eval()
+    total_loss, correct, n = 0.0, 0, 0
+    for xb, yb in loader:
+        xb, yb = xb.to(device), yb.to(device)
+        logits = model(xb)
+        total_loss += loss_fn(logits, yb).item() * len(yb)
+        correct += (logits.argmax(1) == yb).sum().item()
+        n += len(yb)
+    return total_loss / n, correct / n
+
+
+@torch.no_grad()
+def predict(model: nn.Module, loader: DataLoader, device: torch.device) -> torch.Tensor:
+    """Indices de style prédits pour tout un loader, dans l'ordre du loader."""
+    model.eval()
+    return torch.cat([model(xb.to(device)).argmax(1).cpu() for xb, _ in loader])
+
+
+def fit(model: nn.Module, train_loader: DataLoader, val_loader: DataLoader, loss_fn: nn.Module,
+        optimizer: torch.optim.Optimizer, n_epochs: int, device: torch.device) -> dict[str, list[float]]:
+    """Entraîne n_epochs époques et renvoie l'historique par époque (perte et accuracy,
+    train et validation), pour tracer les courbes de suivi."""
+    history = {"train_loss": [], "train_acc": [], "val_loss": [], "val_acc": []}
+    for _ in range(n_epochs):
+        train_loss, train_acc = train_one_epoch(model, train_loader, loss_fn, optimizer, device)
+        val_loss, val_acc = evaluate(model, val_loader, loss_fn, device)
+        for key, value in zip(history, (train_loss, train_acc, val_loss, val_acc)):
+            history[key].append(value)
+    return history

@@ -2,6 +2,10 @@
 # Seuls metadata.csv et subset_info.json peuvent être versionnés.
 code/data/wikiart_*/*/
 
+# Modèles entraînés : sauvegardés pour passer d'un notebook à l'autre,
+# trop lourds pour être versionnés.
+code/modeles/
+
 # Supports de cours et consignes : non publiés
 cours/
 Consignes/

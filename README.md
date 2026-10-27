@@ -1,7 +1,6 @@
 # Guide intelligent du Musée
 
-Projet final du cours *Neural Networks & Deep Learning Foundations*
-(MSA-DATB09-03, Albert School, MSc 1).
+Projet final du cours *Neural Networks & Deep Learning Foundations*.
 
 Un musée des beaux-arts français veut un guide intelligent, sur le
 téléphone des visiteurs et sur des bornes dans les salles. Ce projet en
@@ -18,7 +17,7 @@ construit les briques neuronales :
 Tout le travail est dans le notebook
 [`code/guide_musee.ipynb`](code/guide_musee.ipynb).
 
-Équipe : Bastien Ragueneau, Colin Pietri, Cristian Larrain.
+Membres de l'équipe : Bastien Ragueneau, Colin Pietri, Cristian Larrain.
 
 ## Contenu du dépôt
 

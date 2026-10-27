@@ -12,6 +12,7 @@ from sklearn.model_selection import StratifiedGroupKFold
 
 SEED = 0
 DATA_DIR = Path(__file__).resolve().parent / "data" / "wikiart_style5"
+MODELS_DIR = Path(__file__).resolve().parent / "modeles"  # non versionné
 UNKNOWN_ARTIST = "Unknown Artist"
 
 
@@ -87,3 +88,8 @@ def normalization_stats(X: torch.Tensor, train_idx: np.ndarray) -> tuple[torch.T
     """Moyenne et écart-type par canal, calculés sur le train seul, pixels ramenés dans [0, 1]."""
     X_train = X[train_idx].float() / 255
     return X_train.mean(dim=(0, 2, 3)), X_train.std(dim=(0, 2, 3))
+
+
+def standardize(X: torch.Tensor, mean: torch.Tensor, std: torch.Tensor) -> torch.Tensor:
+    """Pixels uint8 (N, C, H, W) ramenés dans [0, 1], puis centrés-réduits canal par canal."""
+    return (X.float() / 255 - mean[:, None, None]) / std[:, None, None]

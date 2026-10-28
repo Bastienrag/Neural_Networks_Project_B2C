@@ -114,21 +114,49 @@ class ArtworkDataset(Dataset):
 
 
 class DenseNet(nn.Module):
-    """Réseau feed-forward sur les pixels aplatis : une couche Linear + activation par couche
-    cachée, puis une couche Linear de sortie qui renvoie les logits."""
+    """Réseau feed-forward sur les pixels aplatis : pour chaque couche cachée, Linear, batch norm
+    (optionnelle), activation et dropout (optionnel), puis une couche Linear de sortie qui renvoie
+    les logits. Les options désactivées n'ajoutent aucune couche."""
 
     def __init__(self, n_in: int, hidden: list[int], n_out: int,
-                 activation: type[nn.Module] = nn.Sigmoid):
+                 activation: type[nn.Module] = nn.Sigmoid, dropout: float = 0.0,
+                 batch_norm: bool = False, he_init: bool = False):
         super().__init__()
+        self.config = {"n_in": n_in, "hidden": list(hidden), "n_out": n_out,
+                       "activation": activation.__name__, "dropout": dropout, "batch_norm": batch_norm}
         layers, width = [nn.Flatten()], n_in
         for h in hidden:
-            layers += [nn.Linear(width, h), activation()]
+            layers.append(nn.Linear(width, h))
+            if batch_norm:
+                layers.append(nn.BatchNorm1d(h))
+            layers.append(activation())
+            if dropout:
+                layers.append(nn.Dropout(dropout))
             width = h
         layers.append(nn.Linear(width, n_out))
         self.net = nn.Sequential(*layers)
+        if he_init:  # variance 2 / n_in, adaptée à ReLU
+            for layer in self.net:
+                if isinstance(layer, nn.Linear):
+                    nn.init.kaiming_normal_(layer.weight, nonlinearity="relu")
+                    nn.init.zeros_(layer.bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.net(x)
+
+
+def save_dense(model: DenseNet, path: Path) -> None:
+    """Sauvegarde les poids et la configuration, pour reconstruire le réseau sans la connaître."""
+    torch.save({"config": model.config, "state_dict": model.state_dict()}, path)
+
+
+def load_dense(path: Path) -> DenseNet:
+    """Reconstruit un réseau sauvegardé par save_dense, en mode évaluation."""
+    saved = torch.load(path)
+    config = saved["config"] | {"activation": getattr(nn, saved["config"]["activation"])}
+    model = DenseNet(**config)
+    model.load_state_dict(saved["state_dict"])
+    return model.eval()
 
 
 def train_one_epoch(model: nn.Module, loader: DataLoader, loss_fn: nn.Module,
@@ -173,13 +201,29 @@ def predict(model: nn.Module, loader: DataLoader, device: torch.device) -> torch
 
 
 def fit(model: nn.Module, train_loader: DataLoader, val_loader: DataLoader, loss_fn: nn.Module,
-        optimizer: torch.optim.Optimizer, n_epochs: int, device: torch.device) -> dict[str, list[float]]:
+        optimizer: torch.optim.Optimizer, n_epochs: int, device: torch.device,
+        patience: int | None = None) -> dict[str, list[float]]:
     """Entraîne n_epochs époques et renvoie l'historique par époque (perte et accuracy,
-    train et validation), pour tracer les courbes de suivi."""
+    train et validation), pour tracer les courbes de suivi.
+
+    Avec patience, arrêt précoce : l'entraînement s'arrête après patience époques sans baisse de
+    la perte de validation, et le modèle reprend les poids de sa meilleure époque
+    (history["best_epoch"], numérotée à partir de 1)."""
     history = {"train_loss": [], "train_acc": [], "val_loss": [], "val_acc": []}
-    for _ in range(n_epochs):
+    best_loss, best_state, best_epoch = float("inf"), None, 0
+    for epoch in range(1, n_epochs + 1):
         train_loss, train_acc = train_one_epoch(model, train_loader, loss_fn, optimizer, device)
         val_loss, val_acc = evaluate(model, val_loader, loss_fn, device)
         for key, value in zip(history, (train_loss, train_acc, val_loss, val_acc)):
             history[key].append(value)
+        if patience is None:
+            continue
+        if val_loss < best_loss:
+            best_loss, best_epoch = val_loss, epoch
+            best_state = {k: v.detach().clone() for k, v in model.state_dict().items()}
+        elif epoch - best_epoch >= patience:
+            break
+    if patience is not None:
+        model.load_state_dict(best_state)
+        history["best_epoch"] = best_epoch
     return history

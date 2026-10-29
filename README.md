@@ -80,7 +80,7 @@ Chaque jalon du cours est marqué par un tag git.
 |---|---|---|---|
 | Séance 1 | Dépôt, choix de 5 styles, extraction du sous-ensemble WikiArt | `01_donnees` | fait |
 | `m1` | Régression logistique et réseau dense de référence | `02_baseline` | fait |
-| `m2` | Courbes de suivi train / validation et diagnostic des échecs | `03_diagnostic` | à faire |
+| `m2` | Courbes de suivi train / validation et diagnostic des échecs | `03_diagnostic` | fait |
 | `m3` | ResNet pré-entraîné, comparé au réseau dense | `04_resnet` | à faire |
 | `m4` | Recherche par question et comparaison neuronal / classique | `05_questions` | à faire |
 | Rendu | Évaluation finale sur le test et recommandation | `06_recommandation` | à faire |

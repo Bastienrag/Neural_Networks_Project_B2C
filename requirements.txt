@@ -6,6 +6,7 @@ pillow
 torch
 torchvision
 scikit-learn
+sentence-transformers
 
 # Notebook
 jupyterlab

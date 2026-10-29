@@ -171,9 +171,11 @@ class ResNetClassifier(nn.Module):
     restent gelés et en mode évaluation, même pendant l'entraînement : leurs batch norms gardent les
     statistiques d'ImageNet au lieu de se recalculer sur nos batchs."""
 
-    def __init__(self, n_out: int, trainable: tuple[str, ...] = ("fc",), size: int = 224):
+    def __init__(self, n_out: int, trainable: tuple[str, ...] = ("fc",), size: int = 224,
+                 pretrained: bool = True):
         super().__init__()
-        self.net = resnet18(weights=ResNet18_Weights.DEFAULT)
+        self.config = {"n_out": n_out, "size": size}
+        self.net = resnet18(weights=ResNet18_Weights.DEFAULT if pretrained else None)
         self.net.fc = nn.Linear(self.net.fc.in_features, n_out)
         self.size = size
         self.set_trainable(trainable)
@@ -194,6 +196,20 @@ class ResNetClassifier(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = F.interpolate(x, size=self.size, mode="bilinear", align_corners=False)
         return self.net(x)
+
+
+def save_resnet(model: ResNetClassifier, path: Path) -> None:
+    """Sauvegarde les poids et la configuration, pour reconstruire le réseau sans la connaître."""
+    torch.save({"config": model.config, "state_dict": model.state_dict()}, path)
+
+
+def load_resnet(path: Path) -> ResNetClassifier:
+    """Reconstruit sur CPU un ResNet sauvegardé par save_resnet, en mode évaluation, sans
+    retélécharger les poids d'ImageNet."""
+    saved = torch.load(path, map_location="cpu")
+    model = ResNetClassifier(**saved["config"], pretrained=False)
+    model.load_state_dict(saved["state_dict"])
+    return model.eval()
 
 
 def train_one_epoch(model: nn.Module, loader: DataLoader, loss_fn: nn.Module,

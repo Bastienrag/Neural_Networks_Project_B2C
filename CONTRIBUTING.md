@@ -35,12 +35,6 @@ peut approuver et merger.
 
 - Un commit = un changement logique. Ne pas mélanger code, documentation
   et configuration dans le même commit.
-- Message en français. Le titre nomme l'action faite, sans « Je », avec
-  un point final : « Ajout de la boucle d'entraînement du MLP. »
-- Titre de 72 caractères maximum, puis une ligne vide et un court corps,
-  sans « Je » non plus, qui explique ce qui change et pourquoi.
-- Le titre d'une PR suit le même style : il devient le titre du merge
-  commit sur `main`.
 
 ## Données
 

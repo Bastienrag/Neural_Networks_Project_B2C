@@ -1,5 +1,5 @@
 """Briques partagées par les notebooks : chargement des œuvres, découpage, normalisation,
-réseau dense et boucle d'entraînement."""
+réseau dense, ResNet pré-entraîné et boucle d'entraînement."""
 
 import json
 import random
@@ -11,12 +11,16 @@ import torch
 from PIL import Image
 from sklearn.model_selection import StratifiedGroupKFold
 from torch import nn
+from torch.nn import functional as F
 from torch.utils.data import DataLoader, Dataset
+from torchvision.models import ResNet18_Weights, resnet18
 
 SEED = 0
 DATA_DIR = Path(__file__).resolve().parent / "data" / "wikiart_style5"
 MODELS_DIR = Path(__file__).resolve().parent / "modeles"  # non versionné
 UNKNOWN_ARTIST = "Unknown Artist"
+IMAGENET_MEAN = torch.tensor([0.485, 0.456, 0.406])  # statistiques du pré-entraînement du ResNet
+IMAGENET_STD = torch.tensor([0.229, 0.224, 0.225])
 
 
 def set_seed(seed: int = SEED) -> None:
@@ -157,6 +161,39 @@ def load_dense(path: Path) -> DenseNet:
     model = DenseNet(**config)
     model.load_state_dict(saved["state_dict"])
     return model.eval()
+
+
+class ResNetClassifier(nn.Module):
+    """ResNet-18 pré-entraîné sur ImageNet, dont la dernière couche est remplacée par une tête à
+    n_out sorties. Les images sont agrandies à la taille du pré-entraînement (224 pixels).
+
+    Seuls les blocs nommés dans trainable (par exemple "fc", "layer4") sont entraînés. Les autres
+    restent gelés et en mode évaluation, même pendant l'entraînement : leurs batch norms gardent les
+    statistiques d'ImageNet au lieu de se recalculer sur nos batchs."""
+
+    def __init__(self, n_out: int, trainable: tuple[str, ...] = ("fc",), size: int = 224):
+        super().__init__()
+        self.net = resnet18(weights=ResNet18_Weights.DEFAULT)
+        self.net.fc = nn.Linear(self.net.fc.in_features, n_out)
+        self.size = size
+        self.set_trainable(trainable)
+
+    def set_trainable(self, trainable: tuple[str, ...]) -> None:
+        self.trainable = tuple(trainable)
+        for name, block in self.net.named_children():
+            block.requires_grad_(name in self.trainable)
+        self.train(self.training)
+
+    def train(self, mode: bool = True) -> "ResNetClassifier":
+        super().train(mode)
+        for name, block in self.net.named_children():
+            if name not in self.trainable:
+                block.eval()
+        return self
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = F.interpolate(x, size=self.size, mode="bilinear", align_corners=False)
+        return self.net(x)
 
 
 def train_one_epoch(model: nn.Module, loader: DataLoader, loss_fn: nn.Module,

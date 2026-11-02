@@ -83,7 +83,7 @@ Chaque jalon du cours est marqué par un tag git.
 | `m2` | Courbes de suivi train / validation et diagnostic des échecs | `03_diagnostic` | fait |
 | `m3` | ResNet pré-entraîné, comparé au réseau dense | `04_resnet` | fait |
 | `m4` | Recherche par question et comparaison neuronal / classique | `05_questions` | fait |
-| Rendu | Évaluation finale sur le test et recommandation | `06_recommandation` | à faire |
+| Rendu | Évaluation finale sur le test et recommandation | `06_recommandation` | fait |
 
 ## Contribuer
 
